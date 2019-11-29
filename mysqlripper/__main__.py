@@ -4,7 +4,17 @@ import MySQLdb #type: ignore
 import asyncio
 import argparse
     
-mysql_connect : Dict[str,str] = {}
+class DBConnect:
+	def __init__(self):
+		self.user : Optional[str] = None
+		self.password : Optional[str] = None
+		self.socket : Optional[str] = None
+		self.port : Optional[int] = None
+		self.host : Optional[str] = None
+		self.db : str = ''
+	
+	
+mysql_connect : DBConnect
 db_connect = None
 def get_connection():
 	global db_connect
@@ -12,35 +22,39 @@ def get_connection():
 	if db_connect is not None:
 		return db_connect
 
-	cnx = mysql_connect.copy()
-	if 'pass' in cnx:
-		cnx['passwd'] = cnx.pop('pass')
-	if 'socket' in cnx:
-		cnx['unix_socket'] = cnx.pop('socket')
+	cnx = {}
+	if mysql_connect.user:
+		cnx['user'] = mysql_connect.user
+	if mysql_connect.password:
+		cnx['passwd'] = mysql_connect.password
+	if mysql_connect.socket:
+		cnx['unix_socket'] = mysql_connect.socket
+	if mysql_connect.port:
+		cnx['port'] = mysql_connect.port
+	if mysql_connect.host:
+		cnx['host'] = mysql_connect.host
 	
-	print(cnx)
 	db_connect = MySQLdb.connect(**cnx)
 	return db_connect
 
 def get_mysql_dump_cmd(table : str, output_prefix : str) -> List[str]:
-	cmd = ['mysqldump', mysql_connect["db"]]
+	cmd = ['mysqldump', mysql_connect.db]
 	#'--defaults-file=/longtmp/temp-mysql-pushcoin/mysql/my.cnf',
 	
-	user = mysql_connect.get( 'user' )
-	if user:
-		cmd.append( f'--user={user}' )
+	if mysql_connect.user:
+		cmd.append( f'--user={mysql_connect.user}' )
 	
-	password = mysql_connect.get( 'pass' )
-	if password:
-		cmd.append( f'--password={password}')
+	if mysql_connect.password:
+		cmd.append( f'--password={mysql_connect.password}')
 		
-	socket = mysql_connect.get( 'socket' )
-	if socket:
-		cmd.append( f'--socket={socket}' )
+	if mysql_connect.socket:
+		cmd.append( f'--socket={mysql_connect.socket}' )
 		
-	port = mysql_connect.get( 'port' )
-	if port:
-		cmd.append( f'--port={port}' )
+	if mysql_connect.port:
+		cmd.append( f'--port={mysql_connect.port}' )
+		
+	if mysql_connect.host:
+		cmd.append( f'--host={mysql_connect.host}' )
 		
 	cmd.append( f'--result-file={output_prefix}{table}.sql' )
 	cmd.append( table )
@@ -112,20 +126,21 @@ def main():
 	
 	args = cli_args.parse_args()
 	
-	mysql_connect = {}
-	if args.user:
-		mysql_connect['user'] = args.user
-	if args.pass_:
-		mysql_connect['pass'] = args.pass_
-	if args.db:
-		mysql_connect['db'] = args.db
-	if args.socket:
-		mysql_connect['socket'] = args.socket
-	if args.host:
-		mysql_connect['host'] = args.host
-	if args.port:
-		mysql_connect['port'] = args.port
+	dargs = DBConnect()
+	dargs.db = args.db
 	
+	if args.user:
+		dargs.user = args.user
+	if args.pass_:
+		dargs.password = args.pass_
+	if args.socket:
+		dargs.socket = args.socket
+	if args.host:
+		dargs.host = args.host
+	if args.port:
+		dargs.port = int(args.port)
+		
+	mysql_connect = dargs
 	
 	sorted_tables = list_ordered_tables()
 	task = backup_tables( [table[0] for table in sorted_tables], args.output_prefix )
