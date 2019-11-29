@@ -1,14 +1,7 @@
 from typing import *
 
 import MySQLdb
-import asyncio, sys
-
-# Python 3.6 support
-if sys.platform == 'win32':
-    loop = asyncio.ProactorEventLoop()
-    asyncio.set_event_loop(loop)
-else:
-	loop = asyncio.get_event_loop()
+import asyncio
     
 db_connect = None
 def get_connection():
@@ -47,7 +40,7 @@ async def backup_tables(names : List[str]):
 		while len(pending) < proc_count and cmd_at < len(all_cmds):
 			cmd = all_cmds[cmd_at]
 			proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-			key = proc.communicate()
+			key : Task = asyncio.create_task(proc.communicate())
 			pending[key] = (proc, cmd)
 			cmd_at += 1
 			
@@ -55,24 +48,25 @@ async def backup_tables(names : List[str]):
 		if len(pending) == 0:
 			return
 			
-		done, _ = await asyncio.wait({k for k in pending.keys()}, return_when = asyncio.FIRST_COMPLETED )
-		for d in done:
+		done_tasks : Set[Task]
+		done_tasks, _ = await asyncio.wait({k for k in pending.keys()}, return_when = asyncio.FIRST_COMPLETED )
+		
+		for d in done_tasks:
+			assert d.done()
 			result = d.result()
-			# this is often incorrectdly  None when using FIRST_COMPLETED, so we can't reliably use it
 				
-			proc, cmd = pending[d._coro]
+			proc, cmd = pending[d]
+			#print(cmd)
 			if proc.returncode != 0:
 				print( d.exception() )
 				raise Exception( "Failed command", cmd )
 
-			#print( "Completed", cmd )
-			del pending[d._coro]
-	
-		#stdout, stderr = 
-		#print(f'[{cmd!r} exited with {proc.returncode}]')
+			del pending[d]
+			
+		
 	
 def main():
 	sorted_tables = list_ordered_tables()
-	loop.run_until_complete( backup_tables( [table[0] for table in sorted_tables] ) )
+	asyncio.get_event_loop().run_until_complete( backup_tables( [table[0] for table in sorted_tables] ) )
 	
 main()
