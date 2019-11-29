@@ -12,21 +12,29 @@ def get_connection():
 	if db_connect is not None:
 		return db_connect
 
-	db_connect = MySQLdb.connect(**mysql_connect)
+	cnx = mysql_connect.copy()
+	if 'pass' in cnx:
+		cnx['passwd'] = cnx.pop('pass')
+	if 'socket' in cnx:
+		cnx['unix_socket'] = cnx.pop('socket')
+	
+	print(cnx)
+	db_connect = MySQLdb.connect(**cnx)
 	return db_connect
 
-def get_mysql_dump_cmd(table : str) -> List[str]:
-	cmd = ['mysqldump', '--defaults-file=/longtmp/temp-mysql-pushcoin/mysql/my.cnf', mysql_connect["db"]]
+def get_mysql_dump_cmd(table : str, output_prefix : str) -> List[str]:
+	cmd = ['mysqldump', mysql_connect["db"]]
+	#'--defaults-file=/longtmp/temp-mysql-pushcoin/mysql/my.cnf',
 	
 	user = mysql_connect.get( 'user' )
 	if user:
 		cmd.append( f'--user={user}' )
 	
-	password = mysql_connect.get( 'passwd' )
+	password = mysql_connect.get( 'pass' )
 	if password:
 		cmd.append( f'--password={password}')
 		
-	socket = mysql_connect.get( 'unix_socket' )
+	socket = mysql_connect.get( 'socket' )
 	if socket:
 		cmd.append( f'--socket={socket}' )
 		
@@ -34,7 +42,7 @@ def get_mysql_dump_cmd(table : str) -> List[str]:
 	if port:
 		cmd.append( f'--port={port}' )
 		
-	cmd.append( f'--result-file=/tmp/{table}.sql' )
+	cmd.append( f'--result-file={output_prefix}{table}.sql' )
 	cmd.append( table )
 	return cmd
 	
@@ -51,8 +59,8 @@ def list_ordered_tables() -> List[Tuple[str,int]]:
 	return sorted_tables
 
 	
-async def backup_tables(names : List[str]) -> None:
-	all_cmds = [get_mysql_dump_cmd(name) for name in names]
+async def backup_tables(names : List[str], output_prefix : str) -> None:
+	all_cmds = [get_mysql_dump_cmd(name, output_prefix) for name in names]
 	
 	pending : Dict[asyncio.Future,Tuple[asyncio.subprocess.Process,List[str]]] = {}
 	proc_count = 4
@@ -91,12 +99,14 @@ def main():
 	global mysql_connect
 	
 	cli_args = argparse.ArgumentParser( description = "MySQL Ripper", allow_abbrev = False )
+
+	cli_args.add_argument( '--output-prefix', required=True )
 	
 	group = cli_args.add_argument_group( "MySQL Connection" )
 	group.add_argument( '--user'  )
-	group.add_argument( '--passwd' )
-	group.add_argument( '--db' )
-	group.add_argument( '--unix-socket' )
+	group.add_argument( '--pass',  dest='pass_' )
+	group.add_argument( '--db', required=True)
+	group.add_argument( '--socket' )
 	group.add_argument( '--port' )
 	group.add_argument( '--host' )
 	
@@ -105,12 +115,12 @@ def main():
 	mysql_connect = {}
 	if args.user:
 		mysql_connect['user'] = args.user
-	if args.passwd:
-		mysql_connect['passwd'] = args.passwd
+	if args.pass_:
+		mysql_connect['pass'] = args.pass_
 	if args.db:
 		mysql_connect['db'] = args.db
-	if args.unix_socket:
-		mysql_connect['unix_socket'] = args.unix_socket
+	if args.socket:
+		mysql_connect['socket'] = args.socket
 	if args.host:
 		mysql_connect['host'] = args.host
 	if args.port:
@@ -118,6 +128,7 @@ def main():
 	
 	
 	sorted_tables = list_ordered_tables()
-	asyncio.get_event_loop().run_until_complete( backup_tables( [table[0] for table in sorted_tables] ) )
+	task = backup_tables( [table[0] for table in sorted_tables], args.output_prefix )
+	asyncio.get_event_loop().run_until_complete( task )
 	
 main()
