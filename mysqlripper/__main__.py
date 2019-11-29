@@ -107,7 +107,18 @@ async def backup_tables(names : List[str], output_prefix : str) -> None:
 
 			del pending[d]
 			
-		
+def backup( output_prefix : str) -> None:
+	db = get_connection()
+	cur = db.cursor()
+	cur.execute( 'FLUSH TABLES WITH READ LOCK' )
+	try:
+		sorted_tables = list_ordered_tables()
+		task = backup_tables( [table[0] for table in sorted_tables], output_prefix )
+		asyncio.get_event_loop().run_until_complete( task )
+	
+	finally:
+		cur.execute('UNLOCK TABLES' )
+
 	
 def main():
 	global mysql_connect
@@ -141,9 +152,7 @@ def main():
 		dargs.port = int(args.port)
 		
 	mysql_connect = dargs
-	
-	sorted_tables = list_ordered_tables()
-	task = backup_tables( [table[0] for table in sorted_tables], args.output_prefix )
-	asyncio.get_event_loop().run_until_complete( task )
+
+	backup(args.output_prefix)
 	
 main()
