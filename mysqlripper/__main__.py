@@ -1,6 +1,6 @@
 from typing import *
 
-import MySQLdb
+import MySQLdb #type: ignore
 import asyncio
     
 db_connect = None
@@ -31,8 +31,7 @@ async def backup_tables(names : List[str]):
 		f'mysqldump --defaults-file=/longtmp/temp-mysql-pushcoin/mysql/my.cnf sbtest --user=root --password="rootpass" --result-file=/tmp/{name}.sql {name}' for name in names
 	]
 	
-	done = []
-	pending = {}
+	pending : Dict[asyncio.Future,Tuple[asyncio.subprocess.Process,str]] = {}
 	proc_count = 4
 	cmd_at = 0
 	while True:
@@ -40,7 +39,7 @@ async def backup_tables(names : List[str]):
 		while len(pending) < proc_count and cmd_at < len(all_cmds):
 			cmd = all_cmds[cmd_at]
 			proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-			key : Task = asyncio.create_task(proc.communicate())
+			key = asyncio.create_task(proc.communicate())
 			pending[key] = (proc, cmd)
 			cmd_at += 1
 			
@@ -48,7 +47,7 @@ async def backup_tables(names : List[str]):
 		if len(pending) == 0:
 			return
 			
-		done_tasks : Set[Task]
+		done_tasks : Set[asyncio.Future]
 		done_tasks, _ = await asyncio.wait({k for k in pending.keys()}, return_when = asyncio.FIRST_COMPLETED )
 		
 		for d in done_tasks:
