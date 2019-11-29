@@ -4,7 +4,7 @@ import MySQLdb #type: ignore
 import asyncio
 import argparse
     
-mysql_connect = {}
+mysql_connect : Dict[str,str] = {}
 db_connect = None
 def get_connection():
 	global db_connect
@@ -15,26 +15,27 @@ def get_connection():
 	db_connect = MySQLdb.connect(**mysql_connect)
 	return db_connect
 
-def get_mysql_dump_str(table : str) -> str:
-	cmd = f'mysqldump --defaults-file=/longtmp/temp-mysql-pushcoin/mysql/my.cnf {mysql_connect["db"]}'
+def get_mysql_dump_cmd(table : str) -> List[str]:
+	cmd = ['mysqldump', '--defaults-file=/longtmp/temp-mysql-pushcoin/mysql/my.cnf', mysql_connect["db"]]
 	
 	user = mysql_connect.get( 'user' )
 	if user:
-		cmd += f' --user={user}'
+		cmd.append( f'--user={user}' )
 	
 	password = mysql_connect.get( 'passwd' )
 	if password:
-		cmd += f' --password={password}' #TODO: escaping for shell? Or not use shell
+		cmd.append( f'--password={password}')
 		
 	socket = mysql_connect.get( 'unix_socket' )
 	if socket:
-		cmd += f' --socket={socket}'
+		cmd.append( f'--socket={socket}' )
 		
 	port = mysql_connect.get( 'port' )
 	if port:
-		cmd += f' --port={port}'
+		cmd.append( f'--port={port}' )
 		
-	cmd += f' --result-file=/tmp/{table}.sql {table}'
+	cmd.append( f'--result-file=/tmp/{table}.sql' )
+	cmd.append( table )
 	return cmd
 	
 	
@@ -49,17 +50,18 @@ def list_ordered_tables() -> List[Tuple[str,int]]:
 	
 	return sorted_tables
 
-async def backup_tables(names : List[str]) -> None:
-	all_cmds = [get_mysql_dump_str(name) for name in names]
 	
-	pending : Dict[asyncio.Future,Tuple[asyncio.subprocess.Process,str]] = {}
+async def backup_tables(names : List[str]) -> None:
+	all_cmds = [get_mysql_dump_cmd(name) for name in names]
+	
+	pending : Dict[asyncio.Future,Tuple[asyncio.subprocess.Process,List[str]]] = {}
 	proc_count = 4
 	cmd_at = 0
 	while True:
 		# add tasks as there is space
 		while len(pending) < proc_count and cmd_at < len(all_cmds):
 			cmd = all_cmds[cmd_at]
-			proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+			proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 			key = asyncio.create_task(proc.communicate())
 			pending[key] = (proc, cmd)
 			cmd_at += 1
