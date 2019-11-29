@@ -2,20 +2,43 @@ from typing import *
 
 import MySQLdb #type: ignore
 import asyncio
+import argparse
     
+mysql_connect = {}
 db_connect = None
 def get_connection():
 	global db_connect
 	
 	if db_connect is not None:
 		return db_connect
-		
-	db_connect = MySQLdb.connect(user="root", passwd="rootpass", db="sbtest",
-		unix_socket='/longtmp/temp-mysql-pushcoin/mysqld.sock')
+
+	db_connect = MySQLdb.connect(**mysql_connect)
 	return db_connect
+
+def get_mysql_dump_str(table : str) -> str:
+	cmd = f'mysqldump --defaults-file=/longtmp/temp-mysql-pushcoin/mysql/my.cnf {mysql_connect["db"]}'
+	
+	user = mysql_connect.get( 'user' )
+	if user:
+		cmd += f' --user={user}'
+	
+	password = mysql_connect.get( 'passwd' )
+	if password:
+		cmd += f' --password={password}' #TODO: escaping for shell? Or not use shell
+		
+	socket = mysql_connect.get( 'unix_socket' )
+	if socket:
+		cmd += f' --socket={socket}'
+		
+	port = mysql_connect.get( 'port' )
+	if port:
+		cmd += f' --port={port}'
+		
+	cmd += f' --result-file=/tmp/{table}.sql {table}'
+	return cmd
 	
 	
-def list_ordered_tables():
+def list_ordered_tables() -> List[Tuple[str,int]]:
 	db = get_connection()
 	
 	cur = db.cursor()
@@ -26,10 +49,8 @@ def list_ordered_tables():
 	
 	return sorted_tables
 
-async def backup_tables(names : List[str]):
-	all_cmds = [
-		f'mysqldump --defaults-file=/longtmp/temp-mysql-pushcoin/mysql/my.cnf sbtest --user=root --password="rootpass" --result-file=/tmp/{name}.sql {name}' for name in names
-	]
+async def backup_tables(names : List[str]) -> None:
+	all_cmds = [get_mysql_dump_str(name) for name in names]
 	
 	pending : Dict[asyncio.Future,Tuple[asyncio.subprocess.Process,str]] = {}
 	proc_count = 4
@@ -65,6 +86,35 @@ async def backup_tables(names : List[str]):
 		
 	
 def main():
+	global mysql_connect
+	
+	cli_args = argparse.ArgumentParser( description = "MySQL Ripper", allow_abbrev = False )
+	
+	group = cli_args.add_argument_group( "MySQL Connection" )
+	group.add_argument( '--user'  )
+	group.add_argument( '--passwd' )
+	group.add_argument( '--db' )
+	group.add_argument( '--unix-socket' )
+	group.add_argument( '--port' )
+	group.add_argument( '--host' )
+	
+	args = cli_args.parse_args()
+	
+	mysql_connect = {}
+	if args.user:
+		mysql_connect['user'] = args.user
+	if args.passwd:
+		mysql_connect['passwd'] = args.passwd
+	if args.db:
+		mysql_connect['db'] = args.db
+	if args.unix_socket:
+		mysql_connect['unix_socket'] = args.unix_socket
+	if args.host:
+		mysql_connect['host'] = args.host
+	if args.port:
+		mysql_connect['port'] = args.port
+	
+	
 	sorted_tables = list_ordered_tables()
 	asyncio.get_event_loop().run_until_complete( backup_tables( [table[0] for table in sorted_tables] ) )
 	
