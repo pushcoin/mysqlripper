@@ -6,6 +6,16 @@ Parallel MySQL dumping tool.
 MySQLRipper invokes `mysqldump` to dump tables from a database. It runs multiple dumps in parallel to maximize available resources. Tables are dumped from the largest to smallest.
 
 
+# Setup
+
+For running only you can run:
+
+```
+python -m pip install -r run-requirements.txt
+```
+
+For developmen use the `requirements.txt` file.
+
 # Invocation
 
 ```
