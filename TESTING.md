@@ -26,6 +26,8 @@ To run mysql
 mysqld --defaults-file=my.conf
 ```
 
+To connect with localhost use `--host=127.0.0.1` instead, otherwise mysql will attempt to use a socket connection.
+
 ## Sample my.cnf
 
 ```

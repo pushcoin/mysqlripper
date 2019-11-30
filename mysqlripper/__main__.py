@@ -1,85 +1,12 @@
 from typing import *
+from .types import *
+from . import mysql
 
-import MySQLdb #type: ignore
 import asyncio
 import argparse
-from enum import Enum
-    
-class DBConnect:
-	def __init__(self):
-		self.user : Optional[str] = None
-		self.password : Optional[str] = None
-		self.socket : Optional[str] = None
-		self.port : Optional[int] = None
-		self.host : Optional[str] = None
-		self.db : str = ''
-		
-class DBType(Enum):
-	master = 1
-	slave = 2
 	
-	
-mysql_connect : DBConnect
-db_connect = None
-def get_connection():
-	global db_connect
-	
-	if db_connect is not None:
-		return db_connect
-
-	cnx = {}
-	if mysql_connect.user:
-		cnx['user'] = mysql_connect.user
-	if mysql_connect.password:
-		cnx['passwd'] = mysql_connect.password
-	if mysql_connect.socket:
-		cnx['unix_socket'] = mysql_connect.socket
-	if mysql_connect.port:
-		cnx['port'] = mysql_connect.port
-	if mysql_connect.host:
-		cnx['host'] = mysql_connect.host
-	
-	db_connect = MySQLdb.connect(**cnx)
-	return db_connect
-
-def get_mysql_dump_cmd(table : str, output_prefix : str) -> List[str]:
-	cmd = ['mysqldump', mysql_connect.db]
-	#'--defaults-file=/longtmp/temp-mysql-pushcoin/mysql/my.cnf',
-	
-	if mysql_connect.user:
-		cmd.append( f'--user={mysql_connect.user}' )
-	
-	if mysql_connect.password:
-		cmd.append( f'--password={mysql_connect.password}')
-		
-	if mysql_connect.socket:
-		cmd.append( f'--socket={mysql_connect.socket}' )
-		
-	if mysql_connect.port:
-		cmd.append( f'--port={mysql_connect.port}' )
-		
-	if mysql_connect.host:
-		cmd.append( f'--host={mysql_connect.host}' )
-		
-	cmd.append( f'--result-file={output_prefix}{table}.sql' )
-	cmd.append( table )
-	return cmd
-	
-	
-def list_ordered_tables() -> List[Tuple[str,int]]:
-	db = get_connection()
-	
-	cur = db.cursor()
-	cur.execute( 'select TABLE_NAME, (INDEX_LENGTH + DATA_LENGTH) as SIZE from information_schema.TABLES where TABLE_SCHEMA="sbtest"')
-
-	tables = [(row[0],row[1]) for row in cur.fetchall()]
-	sorted_tables = list(reversed(sorted(tables, key=lambda table: table[1])))
-	
-	return sorted_tables
-
-	
-async def backup_tables(names : List[str], output_prefix : str) -> None:
-	all_cmds = [get_mysql_dump_cmd(name, output_prefix) for name in names]
+async def backup_tables(db, names : List[str], output_prefix : str) -> None:
+	all_cmds = [db.get_dump_cmd(name, output_prefix) for name in names]
 	
 	pending : Dict[asyncio.Future,Tuple[asyncio.subprocess.Process,List[str]]] = {}
 	proc_count = 4
@@ -112,17 +39,16 @@ async def backup_tables(names : List[str], output_prefix : str) -> None:
 
 			del pending[d]
 			
-def backup( output_prefix : str, db_type : DBType ) -> None:
-	db = get_connection()
-	cur = db.cursor()
+def backup( db, output_prefix : str, db_type : DBType ) -> None:
+	cur = db.get_cursor()
 	if db_type == DBType.master:
 		cur.execute( 'FLUSH TABLES WITH READ LOCK' )
 	else:
 		cur.execute( 'STOP SLAVE' )
 		
 	try:
-		sorted_tables = list_ordered_tables()
-		task = backup_tables( [table[0] for table in sorted_tables], output_prefix )
+		sorted_tables = db.list_ordered_tables()
+		task = backup_tables( db, [table[0] for table in sorted_tables], output_prefix )
 		asyncio.get_event_loop().run_until_complete( task )
 	
 	finally:
@@ -133,8 +59,6 @@ def backup( output_prefix : str, db_type : DBType ) -> None:
 
 	
 def main():
-	global mysql_connect
-	
 	cli_args = argparse.ArgumentParser( description = "MySQL Ripper", allow_abbrev = False )
 
 	cli_args.add_argument( '--output-prefix', required=True )
@@ -164,8 +88,8 @@ def main():
 	if args.port:
 		dargs.port = int(args.port)
 		
-	mysql_connect = dargs
+	db = mysql.MySQLRip( dargs )
 
-	backup(args.output_prefix, DBType[args.type] )
+	backup(db, args.output_prefix, DBType[args.type] )
 	
 main()
