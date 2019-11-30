@@ -1,5 +1,6 @@
 from typing import *
 
+import logging
 import MySQLdb #type: ignore
 
 from .types import *
@@ -30,6 +31,7 @@ class MySQLRip:
 		if mc.host:
 			cnx['host'] = mc.host
 		
+		logging.debug( "Connecting to MySQL " + str(vars(mc)) )
 		self._connection = MySQLdb.connect(**cnx)
 		return self._connection
 

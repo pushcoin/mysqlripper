@@ -15,6 +15,7 @@ async def backup_tables(db, names : List[str], output_prefix : str, proc_count :
 		while len(pending) < proc_count and cmd_at < len(all_cmds):
 			logging.debug( f"adding {names[cmd_at]} task. {len(pending)+1} of {proc_count}" )
 			cmd = all_cmds[cmd_at]
+			logging.debug( " ".join(cmd) )
 			proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 			key = asyncio.create_task(proc.communicate())
 			pending[key] = (proc, cmd_at)
