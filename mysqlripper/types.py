@@ -10,5 +10,7 @@ class DBConnect:
 		self.db : str = ''
 		
 class DBType(Enum):
+	none = 0
 	master = 1
 	slave = 2
+	

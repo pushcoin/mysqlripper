@@ -44,8 +44,10 @@ class MySQLRip:
 		cur = self._get_connection().cursor()
 		if self._db_type == DBType.master:
 			cur.execute( 'FLUSH TABLES WITH READ LOCK' )
-		else:
+		elif self._db_type == DBType.slave:
 			cur.execute( 'STOP SLAVE' )
+		else:
+			pass
 		cur.close()
 
 			
@@ -53,8 +55,10 @@ class MySQLRip:
 		cur = self._get_connection().cursor()
 		if self._db_type == DBType.master:
 			cur.execute('UNLOCK TABLES' )
-		else:
+		elif self._db_type == DBType.slave:
 			cur.execute('START SLAVE' )
+		else:
+			pass
 		cur.close()
 
 			

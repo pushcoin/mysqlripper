@@ -58,7 +58,7 @@ def main():
 	cli_args = argparse.ArgumentParser( description = "MySQL Ripper", allow_abbrev = False )
 
 	cli_args.add_argument( '--output-prefix', required=True )
-	cli_args.add_argument( '--type', choices = ['master','slave'], default='master' )
+	cli_args.add_argument( '--type', choices = [e.name for e in DBType], default='master' )
 	cli_args.add_argument( '--log', default='warning' )
 	cli_args.add_argument( '--proc-count', default=4, type=int )
 	
