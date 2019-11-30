@@ -5,15 +5,15 @@ from . import mysql
 import asyncio, argparse, logging
 
 	
-async def backup_tables(db, names : List[str], output_prefix : str) -> None:
+async def backup_tables(db, names : List[str], output_prefix : str, proc_count : int) -> None:
 	all_cmds = [db.get_dump_cmd(name, output_prefix) for name in names]
 	
 	pending : Dict[asyncio.Future,Tuple[asyncio.subprocess.Process,List[str]]] = {}
-	proc_count = 4
 	cmd_at = 0
 	while True:
 		# add tasks as there is space
 		while len(pending) < proc_count and cmd_at < len(all_cmds):
+			logging.debug( f"adding {names[cmd_at]} task. {len(pending)+1} of {proc_count}" )
 			cmd = all_cmds[cmd_at]
 			proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 			key = asyncio.create_task(proc.communicate())
@@ -40,14 +40,14 @@ async def backup_tables(db, names : List[str], output_prefix : str) -> None:
 			del pending[d]
 
 			
-def backup( db, output_prefix : str ) -> None:
+def backup( db, output_prefix : str, proc_count : int ) -> None:
 	db.lock()
 	try:
 		sorted_tables = db.list_ordered_tables()
 		if logging.getLogger().isEnabledFor(logging.DEBUG):
 			for table in sorted_tables:
 				logging.debug( f'{table[0]} {table[1]/(1024*1024):.2f}mb' )
-		task = backup_tables( db, [table[0] for table in sorted_tables], output_prefix )
+		task = backup_tables( db, [table[0] for table in sorted_tables], output_prefix, proc_count )
 		asyncio.get_event_loop().run_until_complete( task )
 	
 	finally:
@@ -60,13 +60,14 @@ def main():
 	cli_args.add_argument( '--output-prefix', required=True )
 	cli_args.add_argument( '--type', choices = ['master','slave'], default='master' )
 	cli_args.add_argument( '--log', default='warning' )
+	cli_args.add_argument( '--proc-count', default=4, type=int )
 	
 	group = cli_args.add_argument_group( "MySQL Connection" )
 	group.add_argument( '--user'  )
 	group.add_argument( '--pass',  dest='pass_' )
 	group.add_argument( '--db', required=True)
 	group.add_argument( '--socket' )
-	group.add_argument( '--port' )
+	group.add_argument( '--port', type=int )
 	group.add_argument( '--host' )
 	
 	args = cli_args.parse_args()
@@ -89,6 +90,6 @@ def main():
 		
 	db = mysql.MySQLRip( dargs, DBType[args.type] )
 
-	backup(db, args.output_prefix )
+	backup(db, args.output_prefix, args.proc_count )
 	
 main()
