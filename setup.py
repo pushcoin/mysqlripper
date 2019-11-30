@@ -19,4 +19,10 @@ setuptools.setup(
 		"Operating System :: OS Independent",
 	],
 	python_requires='>=3.7',
+	install_requires=[
+		'mysql==0.0.2',
+		'mysqlclient==1.4.6',
+		'typed-ast>=1.4.0',
+		'typing-extensions>=3.7.4.1',
+	],
 )
