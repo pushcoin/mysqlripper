@@ -30,8 +30,10 @@ class MySQLRip:
 			cnx['port'] = mc.port
 		if mc.host:
 			cnx['host'] = mc.host
+			
+		cnx['database'] = mc.db
 		
-		logging.debug( "Connecting to MySQL " + str(vars(mc)) )
+		logging.debug( "Connecting to MySQL " + str(cnx) )
 		self._connection = MySQLdb.connect(**cnx)
 		return self._connection
 
