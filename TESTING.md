@@ -1,5 +1,23 @@
 Create config file and separate datadir.
 
+# Create Python 3.7 environment
+
+```
+python3.7 -m venv env
+```
+
+If that fails:
+
+```
+python3.7 -m venv --without-pip env 
+source env/bin/activate
+curl https://bootstrap.pypa.io/get-pip.py | python
+deactivate
+
+source env/bin/activate
+pip install --upgrade pip
+```
+
 # Configure MySQL
 
 ```
