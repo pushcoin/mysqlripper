@@ -38,24 +38,17 @@ async def backup_tables(db, names : List[str], output_prefix : str) -> None:
 				raise Exception( "Failed command", cmd )
 
 			del pending[d]
+
 			
-def backup( db, output_prefix : str, db_type : DBType ) -> None:
-	cur = db.get_cursor()
-	if db_type == DBType.master:
-		cur.execute( 'FLUSH TABLES WITH READ LOCK' )
-	else:
-		cur.execute( 'STOP SLAVE' )
-		
+def backup( db, output_prefix : str ) -> None:
+	db.lock()
 	try:
 		sorted_tables = db.list_ordered_tables()
 		task = backup_tables( db, [table[0] for table in sorted_tables], output_prefix )
 		asyncio.get_event_loop().run_until_complete( task )
 	
 	finally:
-		if db_type == DBType.master:
-			cur.execute('UNLOCK TABLES' )
-		else:
-			cur.execute('START SLAVE' )
+		db.unlock()
 
 	
 def main():
@@ -88,8 +81,8 @@ def main():
 	if args.port:
 		dargs.port = int(args.port)
 		
-	db = mysql.MySQLRip( dargs )
+	db = mysql.MySQLRip( dargs, DBType[args.type] )
 
-	backup(db, args.output_prefix, DBType[args.type] )
+	backup(db, args.output_prefix )
 	
 main()

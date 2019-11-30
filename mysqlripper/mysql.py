@@ -5,9 +5,12 @@ import MySQLdb #type: ignore
 from .types import *
 
 class MySQLRip:
-	def __init__( self, connection_args : DBConnect ):
+
+	def __init__( self, connection_args : DBConnect, db_type : DBType ):
 		self._connection = None
 		self._connection_args = connection_args
+		self._db_type = db_type
+		
 		
 	def _get_connection(self):
 		if self._connection is not None:
@@ -29,8 +32,32 @@ class MySQLRip:
 		
 		self._connection = MySQLdb.connect(**cnx)
 		return self._connection
-		
 
+		
+	def close(self) -> None:
+		if self._connection is not None:
+			self._connection.close()
+			self._connection = None
+			
+		
+	def lock(self) -> None:
+		cur = self._get_connection().cursor()
+		if self._db_type == DBType.master:
+			cur.execute( 'FLUSH TABLES WITH READ LOCK' )
+		else:
+			cur.execute( 'STOP SLAVE' )
+		cur.close()
+
+			
+	def unlock(self) -> None:
+		cur = self._get_connection().cursor()
+		if self._db_type == DBType.master:
+			cur.execute('UNLOCK TABLES' )
+		else:
+			cur.execute('START SLAVE' )
+		cur.close()
+
+			
 	def list_ordered_tables(self) -> List[Tuple[str,int]]:
 		db = self._get_connection()
 		
@@ -40,7 +67,10 @@ class MySQLRip:
 		tables = [(row[0],row[1]) for row in cur.fetchall()]
 		sorted_tables = list(reversed(sorted(tables, key=lambda table: table[1])))
 		
+		cur.close()
+		
 		return sorted_tables
+		
 		
 	def get_dump_cmd(self, table : str, output_prefix : str) -> List[str]:
 		cmd = ['mysqldump', self._connection_args.db]
@@ -66,6 +96,3 @@ class MySQLRip:
 		cmd.append( f'--result-file={output_prefix}{table}.sql' )
 		cmd.append( table )
 		return cmd
-	
-	def get_cursor(self):
-		return self._get_connection().cursor()
