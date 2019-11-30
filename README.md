@@ -23,7 +23,7 @@ For running only you can run:
 python -m pip install -r run-requirements.txt
 ```
 
-For developmen use the `requirements.txt` file.
+For development use the `requirements.txt` file.
 
 # Invocation
 

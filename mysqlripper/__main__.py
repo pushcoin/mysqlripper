@@ -76,7 +76,11 @@ def main():
 	
 	args = cli_args.parse_args()
 	
-	logging.basicConfig( level = getattr(logging, args.log.upper(), None ) )
+	logging.basicConfig(
+		level = getattr(logging, args.log.upper(), None ),
+		format = '%(asctime)s|%(levelname)s|%(message)s',
+		datefmt = '%Y-%m-%dT%H:%M:%S'
+	)
 	
 	dargs = DBConnect()
 	dargs.db = args.db
