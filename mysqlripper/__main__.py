@@ -45,6 +45,9 @@ def backup( db, output_prefix : str, proc_count : int ) -> None:
 	db.lock()
 	try:
 		sorted_tables = db.list_ordered_tables()
+		if len(sorted_tables) == 0:
+			logging.warning( "No tables found for dumping" )
+			
 		if logging.getLogger().isEnabledFor(logging.DEBUG):
 			for table in sorted_tables:
 				logging.debug( f'{table[0]} {table[1]/(1024*1024):.2f}mb' )

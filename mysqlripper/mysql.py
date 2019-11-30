@@ -70,7 +70,7 @@ class MySQLRip:
 		db = self._get_connection()
 		
 		cur = db.cursor()
-		cur.execute( 'select TABLE_NAME, (INDEX_LENGTH + DATA_LENGTH) as SIZE from information_schema.TABLES where TABLE_SCHEMA="sbtest"')
+		cur.execute( f'select TABLE_NAME, (INDEX_LENGTH + DATA_LENGTH) as SIZE from information_schema.TABLES where TABLE_SCHEMA="{self._connection_args.db}"')
 
 		tables = [(row[0],row[1]) for row in cur.fetchall()]
 		sorted_tables = list(reversed(sorted(tables, key=lambda table: table[1])))
