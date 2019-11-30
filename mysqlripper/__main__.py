@@ -2,8 +2,8 @@ from typing import *
 from .types import *
 from . import mysql
 
-import asyncio
-import argparse
+import asyncio, argparse, logging
+
 	
 async def backup_tables(db, names : List[str], output_prefix : str) -> None:
 	all_cmds = [db.get_dump_cmd(name, output_prefix) for name in names]
@@ -17,7 +17,7 @@ async def backup_tables(db, names : List[str], output_prefix : str) -> None:
 			cmd = all_cmds[cmd_at]
 			proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 			key = asyncio.create_task(proc.communicate())
-			pending[key] = (proc, cmd)
+			pending[key] = (proc, cmd_at)
 			cmd_at += 1
 			
 		# done?
@@ -31,10 +31,10 @@ async def backup_tables(db, names : List[str], output_prefix : str) -> None:
 			assert d.done()
 			result = d.result()
 				
-			proc, cmd = pending[d]
-			#print(cmd)
+			proc, cmd_ndx = pending[d]
+			logging.info( f"done:{names[cmd_ndx]}" )
 			if proc.returncode != 0:
-				print( d.exception() )
+				logging.error( d.exception() )
 				raise Exception( "Failed command", cmd )
 
 			del pending[d]
@@ -44,6 +44,9 @@ def backup( db, output_prefix : str ) -> None:
 	db.lock()
 	try:
 		sorted_tables = db.list_ordered_tables()
+		if logging.getLogger().isEnabledFor(logging.DEBUG):
+			for table in sorted_tables:
+				logging.debug( f'{table[0]} {table[1]/(1024*1024):.2f}mb' )
 		task = backup_tables( db, [table[0] for table in sorted_tables], output_prefix )
 		asyncio.get_event_loop().run_until_complete( task )
 	
@@ -56,6 +59,7 @@ def main():
 
 	cli_args.add_argument( '--output-prefix', required=True )
 	cli_args.add_argument( '--type', choices = ['master','slave'], default='master' )
+	cli_args.add_argument( '--log', default='warning' )
 	
 	group = cli_args.add_argument_group( "MySQL Connection" )
 	group.add_argument( '--user'  )
@@ -66,6 +70,8 @@ def main():
 	group.add_argument( '--host' )
 	
 	args = cli_args.parse_args()
+	
+	logging.basicConfig( level = getattr(logging, args.log.upper(), None ) )
 	
 	dargs = DBConnect()
 	dargs.db = args.db
