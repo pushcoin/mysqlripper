@@ -8,7 +8,7 @@ import asyncio, argparse, logging
 async def backup_tables(db, names : List[str], output_prefix : str, proc_count : int) -> None:
 	all_cmds = [db.get_dump_cmd(name, output_prefix) for name in names]
 	
-	pending : Dict[asyncio.Future,Tuple[asyncio.subprocess.Process,List[str]]] = {}
+	pending : Dict[asyncio.Future,Tuple[asyncio.subprocess.Process,int]] = {}
 	cmd_at = 0
 	while True:
 		# add tasks as there is space
