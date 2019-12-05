@@ -98,7 +98,7 @@ def main() -> None:
 	
 	group = cli_args.add_argument_group( "MySQL Connection" )
 	group.add_argument( '--user'  )
-	group.add_argument( '--pass',  dest='pass_', nargs='?', default = password_prompt )
+	group.add_argument( '--pass', const = password_prompt, dest='pass_', nargs='?', default = None )
 	group.add_argument( '--db', required=True)
 	group.add_argument( '--socket' )
 	group.add_argument( '--port', type=int )
