@@ -78,6 +78,7 @@ def backup( db, output_prefix : str, proc_count : int, pipe_to : str ) -> None:
 				logging.debug( f'{table[0]} {table[1]/(1024*1024):.2f}mb' )
 				
 		objects = [DBObject(DBObjectType.table,table[0]) for table in sorted_tables]
+		objects.append( DBObject(DBObjectType.schema, None) )
 		task = backup_tables( db, objects, output_prefix, proc_count, pipe_to )
 		asyncio.get_event_loop().run_until_complete( task )
 	
