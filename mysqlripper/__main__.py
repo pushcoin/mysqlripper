@@ -2,7 +2,7 @@ from typing import *
 from .types import *
 from . import mysql
 
-import asyncio, argparse, logging, shlex
+import asyncio, argparse, getpass, logging, shlex
 
 	
 async def backup_tables(db, names : List[DBObject], output_prefix : str, proc_count : int, pipe_to : str) -> None:
@@ -84,6 +84,7 @@ def backup( db, output_prefix : str, proc_count : int, pipe_to : str ) -> None:
 	finally:
 		db.unlock()
 
+password_prompt = {}
 	
 def main() -> None:
 	cli_args = argparse.ArgumentParser( description = "MySQL Ripper", allow_abbrev = False )
@@ -96,7 +97,7 @@ def main() -> None:
 	
 	group = cli_args.add_argument_group( "MySQL Connection" )
 	group.add_argument( '--user'  )
-	group.add_argument( '--pass',  dest='pass_' )
+	group.add_argument( '--pass',  dest='pass_', nargs='?', default = password_prompt )
 	group.add_argument( '--db', required=True)
 	group.add_argument( '--socket' )
 	group.add_argument( '--port', type=int )
@@ -118,8 +119,12 @@ def main() -> None:
 	
 	if args.user:
 		dargs.user = args.user
-	if args.pass_:
+	
+	if args.pass_ == password_prompt:
+		dargs.password = getpass.getpass()
+	elif args.pass_:
 		dargs.password = args.pass_
+		
 	if args.socket:
 		dargs.socket = args.socket
 	if args.host:
