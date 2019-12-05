@@ -85,12 +85,13 @@ def backup( db, output_prefix : str, proc_count : int, pipe_to : str ) -> None:
 		db.unlock()
 
 password_prompt = {}
+type_default_none = {}
 	
 def main() -> None:
 	cli_args = argparse.ArgumentParser( description = "MySQL Ripper", allow_abbrev = False )
 
 	cli_args.add_argument( '--output-prefix' )
-	cli_args.add_argument( '--type', choices = [e.name for e in DBType], default='master' )
+	cli_args.add_argument( '--type', choices = [e.name for e in DBType], default= type_default_none )
 	cli_args.add_argument( '--log', default='warning' )
 	cli_args.add_argument( '--proc-count', default=4, type=int )
 	cli_args.add_argument( '--pipe-to', type=str )
@@ -131,6 +132,10 @@ def main() -> None:
 		dargs.host = args.host
 	if args.port:
 		dargs.port = int(args.port)
+		
+	if args.type == type_default_none:
+		logging.warning( "type='none' may result in inconsistent data dumps" )
+		args.type = 'none'
 		
 	db = mysql.MySQLRip( dargs, DBType[args.type] )
 
