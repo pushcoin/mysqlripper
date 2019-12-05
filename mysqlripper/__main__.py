@@ -33,6 +33,7 @@ async def backup_tables(db, names : List[DBObject], output_prefix : str, proc_co
 				cmd_str += f'| {pipe_to}'
 			
 			logging.debug( cmd_str )
+			logging.info( f"start:{dbobj.type_.name} {dbobj.name}" )
 			proc = await asyncio.create_subprocess_shell(cmd_str, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 			key = asyncio.create_task(proc.communicate())
 			pending[key] = (proc, cmd_at)
@@ -51,8 +52,8 @@ async def backup_tables(db, names : List[DBObject], output_prefix : str, proc_co
 				
 				
 			proc, cmd_ndx = pending[d]
-			
-			logging.info( f"done:{names[cmd_ndx]}" )
+			dbobj = names[cmd_ndx]
+			logging.info( f"done:{dbobj.type_.name} {dbobj.name}" )
 			
 			stdout = result[0]
 			if len(stdout) > 0:
