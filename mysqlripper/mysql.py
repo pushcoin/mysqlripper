@@ -80,7 +80,7 @@ class MySQLRip:
 		return sorted_tables
 		
 		
-	def get_dump_cmd(self, table : str, output_prefix : Optional[str] = None) -> List[str]:
+	def get_dump_cmd(self, table : DBObject, output_prefix : Optional[str] = None) -> List[str]:
 		cmd = ['mysqldump', self._connection_args.db]
 		#'--defaults-file=/longtmp/temp-mysql-pushcoin/mysql/my.cnf',
 		
@@ -104,5 +104,13 @@ class MySQLRip:
 		if output_prefix:
 			cmd.append( f'--result-file={output_prefix}{table}.sql' )
 			
-		cmd.append( table )
+		if table.type_ == DBObjectType.table:
+			assert table.name is not None
+			cmd.append( table.name )
+		elif table.type_ == DBObjectType.schema:
+			assert table.name is None
+			cmd.extend([ '--routines', '--triggers', '--no-data' ])
+		else:
+			raise Exception( 'Invalidate object type', table.type_ )
+			
 		return cmd

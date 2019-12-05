@@ -1,3 +1,4 @@
+from typing import *
 from enum import Enum
 
 class DBConnect:
@@ -13,4 +14,13 @@ class DBType(Enum):
 	none = 0
 	master = 1
 	slave = 2
+	
+class DBObjectType(Enum):
+	table = 0
+	schema = 1
+	
+	
+class DBObject(NamedTuple):
+	type_ : DBObjectType
+	name : Optional[str]
 	

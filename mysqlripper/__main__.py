@@ -5,7 +5,7 @@ from . import mysql
 import asyncio, argparse, logging, shlex
 
 	
-async def backup_tables(db, names : List[str], output_prefix : str, proc_count : int, pipe_to : str) -> None:
+async def backup_tables(db, names : List[DBObject], output_prefix : str, proc_count : int, pipe_to : str) -> None:
 	all_cmds = [db.get_dump_cmd(name, output_prefix) for name in names]
 	
 	pending : Dict[asyncio.Future,Tuple[asyncio.subprocess.Process,int]] = {}
@@ -13,11 +13,19 @@ async def backup_tables(db, names : List[str], output_prefix : str, proc_count :
 	while True:
 		# add tasks as there is space
 		while len(pending) < proc_count and cmd_at < len(all_cmds):
+			dbobj = names[cmd_at]
 			logging.debug( f"adding {names[cmd_at]} task. {len(pending)+1} of {proc_count}" )
 			cmd = all_cmds[cmd_at]
 			
-			if pipe_to:
-				cmd_str = f'TABLE_NAME={shlex.quote(names[cmd_at])}; '
+			if pipe_to:	
+				if dbobj.type_ == DBObjectType.schema:
+					cmd_str = f'OBJECT_NAME=schema; '
+				elif dbobj.type_ == DBObjectType.table:
+					assert dbobj.name is not None
+					cmd_str = f'TABLE_NAME={shlex.quote(dbobj.name)}; '
+					cmd_str = f'OBJECT_NAME={shlex.quote("table_" + dbobj.name)}; '
+				else:	
+					raise Exception("Invalid DBObjectType", dbobj.type_ )
 			else:
 				cmd_str = ''
 				
@@ -68,14 +76,16 @@ def backup( db, output_prefix : str, proc_count : int, pipe_to : str ) -> None:
 		if logging.getLogger().isEnabledFor(logging.DEBUG):
 			for table in sorted_tables:
 				logging.debug( f'{table[0]} {table[1]/(1024*1024):.2f}mb' )
-		task = backup_tables( db, [table[0] for table in sorted_tables], output_prefix, proc_count, pipe_to )
+				
+		objects = [DBObject(DBObjectType.table,table[0]) for table in sorted_tables]
+		task = backup_tables( db, objects, output_prefix, proc_count, pipe_to )
 		asyncio.get_event_loop().run_until_complete( task )
 	
 	finally:
 		db.unlock()
 
 	
-def main():
+def main() -> None:
 	cli_args = argparse.ArgumentParser( description = "MySQL Ripper", allow_abbrev = False )
 
 	cli_args.add_argument( '--output-prefix' )
