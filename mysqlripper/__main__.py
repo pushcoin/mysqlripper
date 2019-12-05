@@ -22,7 +22,6 @@ async def backup_tables(db, names : List[DBObject], output_prefix : str, proc_co
 					cmd_str = f'OBJECT_NAME=schema; '
 				elif dbobj.type_ == DBObjectType.table:
 					assert dbobj.name is not None
-					cmd_str = f'TABLE_NAME={shlex.quote(dbobj.name)}; '
 					cmd_str = f'OBJECT_NAME={shlex.quote("table_" + dbobj.name)}; '
 				else:	
 					raise Exception("Invalid DBObjectType", dbobj.type_ )

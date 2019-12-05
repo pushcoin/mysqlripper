@@ -37,10 +37,10 @@ python -m mysqlripper --help
 Instead of writing to a file with `--output-prefix` you can pipe the SQL dump to another command. Use this to chain to a compression program, such as gzip.
 
 ```
---pipe-to 'gzip > /tmp/${TABLE_NAME}.sql.gz'
+--pipe-to 'gzip > /tmp/${OBJECT_NAME}.sql.gz'
 ```
 
-The variable `TABLE_NAME` will be defined for the shell. 
+The variable `OBJECT_NAME` will be defined for the shell based on what is being export, a schema, or a table.
 
 The `pipe-to` string is appended to the dump command and then executed in a shell.
 
