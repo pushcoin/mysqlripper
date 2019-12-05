@@ -2,7 +2,7 @@ from typing import *
 from .types import *
 from . import mysql
 
-import asyncio, argparse, logging
+import asyncio, argparse, logging, shlex
 
 	
 async def backup_tables(db, names : List[str], output_prefix : str, proc_count : int) -> None:
@@ -15,8 +15,9 @@ async def backup_tables(db, names : List[str], output_prefix : str, proc_count :
 		while len(pending) < proc_count and cmd_at < len(all_cmds):
 			logging.debug( f"adding {names[cmd_at]} task. {len(pending)+1} of {proc_count}" )
 			cmd = all_cmds[cmd_at]
-			logging.debug( " ".join(cmd) )
-			proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+			cmd_str = " ".join([shlex.quote(s) for s in cmd])
+			logging.debug( cmd_str )
+			proc = await asyncio.create_subprocess_shell(cmd_str, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 			key = asyncio.create_task(proc.communicate())
 			pending[key] = (proc, cmd_at)
 			cmd_at += 1
@@ -32,8 +33,15 @@ async def backup_tables(db, names : List[str], output_prefix : str, proc_count :
 			assert d.done()
 			result = d.result()
 				
+				
 			proc, cmd_ndx = pending[d]
+			
 			logging.info( f"done:{names[cmd_ndx]}" )
+			
+			stdout = result[0]
+			if len(stdout) > 0:
+				print( names[cmd_ndx], "\n", stdout )
+				
 			if proc.returncode != 0:
 				logging.error( d.exception() )
 				raise Exception( "Failed command", cmd )

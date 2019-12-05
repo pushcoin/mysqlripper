@@ -41,7 +41,7 @@ sysbench --mysql-socket=../mysqld.sock /usr/share/sysbench/oltp_point_select.lua
 To run mysql
 
 ```
-mysqld --defaults-file=my.conf
+mysqld --defaults-file=my.cnf
 ```
 
 To connect with localhost use `--host=127.0.0.1` instead, otherwise mysql will attempt to use a socket connection.
@@ -66,7 +66,7 @@ tmpdir      = /tmp
 lc-messages-dir = /usr/share/mysql
 skip-external-locking
 bind-address        = 127.0.0.1
-log_error = /longtmp/temp-mysql-pushcoin/error.log
-expire_logs_days    = 10
-max_binlog_size         = 100M
+#log_error = /longtmp/temp-mysql-pushcoin/error.log
+#expire_logs_days    = 10
+#max_binlog_size         = 100M
 ```
