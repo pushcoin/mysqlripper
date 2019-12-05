@@ -91,11 +91,13 @@ type_default_none = {}
 def main() -> None:
 	cli_args = argparse.ArgumentParser( description = "MySQL Ripper", allow_abbrev = False )
 
-	cli_args.add_argument( '--output-prefix' )
 	cli_args.add_argument( '--type', choices = [e.name for e in DBType], default= type_default_none )
 	cli_args.add_argument( '--log', default='warning' )
 	cli_args.add_argument( '--proc-count', default=4, type=int )
-	cli_args.add_argument( '--pipe-to', type=str )
+	
+	dest_group = cli_args.add_mutually_exclusive_group(required=True)
+	dest_group.add_argument( '--pipe-to', type=str )
+	dest_group.add_argument( '--output-prefix' )
 	
 	group = cli_args.add_argument_group( "MySQL Connection" )
 	group.add_argument( '--user'  )
@@ -113,9 +115,6 @@ def main() -> None:
 		datefmt = '%Y-%m-%dT%H:%M:%S'
 	)
 	
-	if not args.output_prefix and not args.pipe_to:
-		logging.error( "One of output_prefix or pipe is required" )
-
 	dargs = DBConnect()
 	dargs.db = args.db
 	
