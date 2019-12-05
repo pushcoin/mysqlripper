@@ -80,7 +80,7 @@ class MySQLRip:
 		return sorted_tables
 		
 		
-	def get_dump_cmd(self, table : str, output_prefix : str) -> List[str]:
+	def get_dump_cmd(self, table : str, output_prefix : Optional[str] = None) -> List[str]:
 		cmd = ['mysqldump', self._connection_args.db]
 		#'--defaults-file=/longtmp/temp-mysql-pushcoin/mysql/my.cnf',
 		
@@ -100,7 +100,9 @@ class MySQLRip:
 			
 		if mc.host:
 			cmd.append( f'--host={mc.host}' )
+
+		if output_prefix:
+			cmd.append( f'--result-file={output_prefix}{table}.sql' )
 			
-		cmd.append( f'--result-file={output_prefix}{table}.sql' )
 		cmd.append( table )
 		return cmd

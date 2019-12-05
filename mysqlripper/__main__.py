@@ -5,7 +5,7 @@ from . import mysql
 import asyncio, argparse, logging, shlex
 
 	
-async def backup_tables(db, names : List[str], output_prefix : str, proc_count : int) -> None:
+async def backup_tables(db, names : List[str], output_prefix : str, proc_count : int, pipe_to : str) -> None:
 	all_cmds = [db.get_dump_cmd(name, output_prefix) for name in names]
 	
 	pending : Dict[asyncio.Future,Tuple[asyncio.subprocess.Process,int]] = {}
@@ -15,7 +15,16 @@ async def backup_tables(db, names : List[str], output_prefix : str, proc_count :
 		while len(pending) < proc_count and cmd_at < len(all_cmds):
 			logging.debug( f"adding {names[cmd_at]} task. {len(pending)+1} of {proc_count}" )
 			cmd = all_cmds[cmd_at]
-			cmd_str = " ".join([shlex.quote(s) for s in cmd])
+			
+			if pipe_to:
+				cmd_str = f'TABLE_NAME={shlex.quote(names[cmd_at])}; '
+			else:
+				cmd_str = ''
+				
+			cmd_str += " ".join([shlex.quote(s) for s in cmd])
+			if pipe_to:
+				cmd_str += f'| {pipe_to}'
+			
 			logging.debug( cmd_str )
 			proc = await asyncio.create_subprocess_shell(cmd_str, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 			key = asyncio.create_task(proc.communicate())
@@ -40,7 +49,7 @@ async def backup_tables(db, names : List[str], output_prefix : str, proc_count :
 			
 			stdout = result[0]
 			if len(stdout) > 0:
-				print( names[cmd_ndx], "\n", stdout )
+				logging.info( f'{names[cmd_ndx]}:{stdout}' )
 				
 			if proc.returncode != 0:
 				logging.error( d.exception() )
@@ -49,7 +58,7 @@ async def backup_tables(db, names : List[str], output_prefix : str, proc_count :
 			del pending[d]
 
 			
-def backup( db, output_prefix : str, proc_count : int ) -> None:
+def backup( db, output_prefix : str, proc_count : int, pipe_to : str ) -> None:
 	db.lock()
 	try:
 		sorted_tables = db.list_ordered_tables()
@@ -59,7 +68,7 @@ def backup( db, output_prefix : str, proc_count : int ) -> None:
 		if logging.getLogger().isEnabledFor(logging.DEBUG):
 			for table in sorted_tables:
 				logging.debug( f'{table[0]} {table[1]/(1024*1024):.2f}mb' )
-		task = backup_tables( db, [table[0] for table in sorted_tables], output_prefix, proc_count )
+		task = backup_tables( db, [table[0] for table in sorted_tables], output_prefix, proc_count, pipe_to )
 		asyncio.get_event_loop().run_until_complete( task )
 	
 	finally:
@@ -69,10 +78,11 @@ def backup( db, output_prefix : str, proc_count : int ) -> None:
 def main():
 	cli_args = argparse.ArgumentParser( description = "MySQL Ripper", allow_abbrev = False )
 
-	cli_args.add_argument( '--output-prefix', required=True )
+	cli_args.add_argument( '--output-prefix' )
 	cli_args.add_argument( '--type', choices = [e.name for e in DBType], default='master' )
 	cli_args.add_argument( '--log', default='warning' )
 	cli_args.add_argument( '--proc-count', default=4, type=int )
+	cli_args.add_argument( '--pipe-to', type=str )
 	
 	group = cli_args.add_argument_group( "MySQL Connection" )
 	group.add_argument( '--user'  )
@@ -90,6 +100,9 @@ def main():
 		datefmt = '%Y-%m-%dT%H:%M:%S'
 	)
 	
+	if not args.output_prefix and not args.pipe_to:
+		logging.error( "One of output_prefix or pipe is required" )
+
 	dargs = DBConnect()
 	dargs.db = args.db
 	
@@ -106,6 +119,6 @@ def main():
 		
 	db = mysql.MySQLRip( dargs, DBType[args.type] )
 
-	backup(db, args.output_prefix, args.proc_count )
+	backup(db, args.output_prefix, args.proc_count, args.pipe_to )
 	
 main()
