@@ -108,6 +108,10 @@ def main() -> None:
 	group.add_argument( '--port', type=int )
 	group.add_argument( '--host' )
 	
+	compress_args = cli_args.add_mutually_exclusive_group()
+	compress_args.add_argument( '--gzip', action='store_true' )
+	compress_args.add_argument( '--lzop', action='store_true' )
+	
 	args = cli_args.parse_args()
 	
 	logging.basicConfig(
@@ -140,6 +144,7 @@ def main() -> None:
 		
 	db = mysql.MySQLRip( dargs, DBType[args.type] )
 
+	pipe_to = args.pipe_to
 	output_prefix = args.output_prefix
 	
 	# Output to a directory instead, creating it if necessary
@@ -148,7 +153,21 @@ def main() -> None:
 		if not output_prefix.endswith( '/' ):
 			output_prefix += '/'
 		os.makedirs(output_prefix, exist_ok = True)
+	
+	
+	# Use standard compression utitilities
+	if args.gzip or args.lzop:
+		if not output_prefix:
+			raise Exception( 'Compression requires an output option' )
 		
-	backup(db, output_prefix, args.proc_count, args.pipe_to )
+		if args.gzip:
+			pipe_to = f'gzip > {output_prefix}${{OBJECT_NAME}}.sql.gz'
+		elif args.lzop:
+			pipe_to = f'lzop > {output_prefix}${{OBJECT_NAME}}.sql.lzop'
+			
+		output_prefix = None
+			
+		
+	backup(db, output_prefix, args.proc_count, pipe_to )
 	
 main()
