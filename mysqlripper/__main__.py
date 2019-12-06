@@ -2,7 +2,7 @@ from typing import *
 from .types import *
 from . import mysql
 
-import asyncio, argparse, getpass, logging, shlex
+import asyncio, argparse, getpass, logging, os, shlex
 
 	
 async def backup_tables(db, names : List[DBObject], output_prefix : str, proc_count : int, pipe_to : str) -> None:
@@ -85,8 +85,8 @@ def backup( db, output_prefix : str, proc_count : int, pipe_to : str ) -> None:
 	finally:
 		db.unlock()
 
-password_prompt = {}
-type_default_none = {}
+password_prompt : Any = {}
+type_default_none : Any = {}
 	
 def main() -> None:
 	cli_args = argparse.ArgumentParser( description = "MySQL Ripper", allow_abbrev = False )
@@ -98,6 +98,7 @@ def main() -> None:
 	dest_group = cli_args.add_mutually_exclusive_group(required=True)
 	dest_group.add_argument( '--pipe-to', type=str )
 	dest_group.add_argument( '--output-prefix' )
+	dest_group.add_argument( '--dump-dir' )
 	
 	group = cli_args.add_argument_group( "MySQL Connection" )
 	group.add_argument( '--user'  )
@@ -139,6 +140,15 @@ def main() -> None:
 		
 	db = mysql.MySQLRip( dargs, DBType[args.type] )
 
-	backup(db, args.output_prefix, args.proc_count, args.pipe_to )
+	output_prefix = args.output_prefix
+	
+	# Output to a directory instead, creating it if necessary
+	if args.dump_dir:
+		output_prefix = args.dump_dir
+		if not output_prefix.endswith( '/' ):
+			output_prefix += '/'
+		os.makedirs(output_prefix, exist_ok = True)
+		
+	backup(db, output_prefix, args.proc_count, args.pipe_to )
 	
 main()

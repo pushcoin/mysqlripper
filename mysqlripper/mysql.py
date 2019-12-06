@@ -101,16 +101,18 @@ class MySQLRip:
 		if mc.host:
 			cmd.append( f'--host={mc.host}' )
 
-		if output_prefix:
-			cmd.append( f'--result-file={output_prefix}{table}.sql' )
-			
 		if table.type_ == DBObjectType.table:
 			assert table.name is not None
+			object_name = f'table_{table.name}'
 			cmd.append( table.name )
 		elif table.type_ == DBObjectType.schema:
 			assert table.name is None
+			object_name = 'schema'
 			cmd.extend([ '--routines', '--triggers', '--no-data' ])
 		else:
 			raise Exception( 'Invalidate object type', table.type_ )
+			
+		if output_prefix:
+			cmd.append( f'--result-file={output_prefix}{object_name}.sql' )
 			
 		return cmd
