@@ -70,3 +70,9 @@ bind-address        = 127.0.0.1
 #expire_logs_days    = 10
 #max_binlog_size         = 100M
 ```
+
+## Sample Run
+
+```
+python -m mysqlripper --db sbtest --host 127.0.0.1 --user root --pass rootpass --output-prefix /tmp/dump --port 3337
+```
