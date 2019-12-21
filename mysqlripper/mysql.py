@@ -1,7 +1,7 @@
 from typing import *
 
 import logging
-import MySQLdb #type: ignore
+import pymysql #type: ignore
 
 from .types import *
 
@@ -34,7 +34,7 @@ class MySQLRip:
 		cnx['database'] = mc.db
 		
 		logging.debug( "Connecting to MySQL " + str(cnx) )
-		self._connection = MySQLdb.connect(**cnx)
+		self._connection = pymysql.connect(**cnx)
 		return self._connection
 
 		
