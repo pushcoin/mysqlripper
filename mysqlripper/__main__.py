@@ -2,7 +2,7 @@ from typing import *
 from .types import *
 from . import mysql
 
-import asyncio, argparse, getpass, logging, os, shlex
+import asyncio, argparse, getpass, logging, os, shlex, pprint
 
 	
 async def backup_tables(db, names : List[DBObject], output_prefix : str, proc_count : int, pipe_to : str) -> None:
@@ -81,7 +81,11 @@ def backup( db, output_prefix : str, proc_count : int, pipe_to : str ) -> None:
 		objects.append( DBObject(DBObjectType.schema, None) )
 		task = backup_tables( db, objects, output_prefix, proc_count, pipe_to )
 		asyncio.get_event_loop().run_until_complete( task )
-	
+
+		status = db.get_master_slave_status()
+		with open( output_prefix + 'status.txt', 'w', encoding='utf-8' ) as f:
+			f.write(pprint.pformat(status))
+			
 	finally:
 		db.unlock()
 

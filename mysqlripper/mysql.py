@@ -50,6 +50,8 @@ class MySQLRip:
 			cur.execute( 'FLUSH TABLES WITH READ LOCK' )
 		elif self._db_type == DBType.slave:
 			cur.execute( 'STOP SLAVE' )
+		elif self._db_type == DBType.rds_slave:
+			cur.execute( 'call mysql.rds_stop_replication' )
 		else:
 			pass
 		cur.close()
@@ -60,6 +62,8 @@ class MySQLRip:
 		if self._db_type == DBType.master:
 			cur.execute('UNLOCK TABLES' )
 		elif self._db_type == DBType.slave:
+			cur.execute('START SLAVE' )
+		elif self._db_type == DBType.rds_slave:
 			cur.execute('START SLAVE' )
 		else:
 			pass
@@ -78,6 +82,23 @@ class MySQLRip:
 		cur.close()
 		
 		return sorted_tables
+
+	def get_master_slave_status(self) -> Dict[str,Any]:
+		cur = self._get_connection().cursor()
+		if self._db_type == DBType.master:
+			cmd = f'SHOW MASTER STATUS'
+		elif self._db_type == DBType.slave or self._db_type == DBType.rds_slave:
+			cmd =f'SHOW SLAVE STATUS'
+		else:
+			return 'None, as no type specified'
+		
+		cur.execute( cmd )
+		column_names = [x[0] for x in cur.description]
+		data = [dict(zip(column_names,row)) for row in cur.fetchall()]
+		
+		cur.close()
+		
+		return data
 		
 		
 	def get_dump_cmd(self, table : DBObject, output_prefix : Optional[str] = None) -> List[str]:

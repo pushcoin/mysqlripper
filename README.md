@@ -1,4 +1,4 @@
-Parallel MySQL dumping tool (status: alpha - do not use in production)
+pParallel MySQL dumping tool (status: alpha - do not use in production)
 
 
 # Operation

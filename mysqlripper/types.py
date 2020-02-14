@@ -14,6 +14,7 @@ class DBType(Enum):
 	none = 0
 	master = 1
 	slave = 2
+	rds_slave = 3
 	
 class DBObjectType(Enum):
 	table = 0
