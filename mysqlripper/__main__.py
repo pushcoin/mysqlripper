@@ -2,7 +2,7 @@ from typing import *
 from .types import *
 from . import mysql
 
-import asyncio, argparse, getpass, logging, os, shlex, pprint
+import asyncio, argparse, getpass, logging, os, shlex, pprint, sys
 
 	
 async def backup_tables(db, names : List[DBObject], output_prefix : str, proc_count : int, pipe_to : str) -> None:
@@ -66,8 +66,14 @@ async def backup_tables(db, names : List[DBObject], output_prefix : str, proc_co
 			del pending[d]
 
 			
-def backup( db, output_prefix : str, proc_count : int, pipe_to : str ) -> None:
-	db.lock()
+def backup( db, output_prefix : str, proc_count : int, pipe_to : str ) -> bool:
+	try:
+		db.lock()
+	except Exception as e:
+		print( repr(e) )
+		print( "Failed to lock the DB", file=sys.stderr)
+		return False
+		
 	try:
 		sorted_tables = db.list_ordered_tables()
 		if len(sorted_tables) == 0:
@@ -86,8 +92,20 @@ def backup( db, output_prefix : str, proc_count : int, pipe_to : str ) -> None:
 		with open( output_prefix + 'status.txt', 'w', encoding='utf-8' ) as f:
 			f.write(pprint.pformat(status))
 			
+		return True
+			
+	except Exception as e:
+		print( repr(e) )
+		return False
+		
 	finally:
-		db.unlock()
+		try:
+			db.unlock()
+		except Exception as e:
+			print( repr(e) ) 
+			print( "Unlocking of the DB failed! Manual inspection is required. ", file=sys.stderr )
+			return False
+			
 
 password_prompt : Any = {}
 type_default_none : Any = {}
@@ -172,6 +190,8 @@ def main() -> None:
 		output_prefix = None
 			
 		
-	backup(db, output_prefix, args.proc_count, pipe_to )
+	if not backup(db, output_prefix, args.proc_count, pipe_to ):
+		print( "Dump failed", file=sys.stderr )
+		sys.exit(1)
 	
 main()

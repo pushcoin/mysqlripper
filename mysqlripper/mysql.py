@@ -67,6 +67,7 @@ class MySQLRip:
 			cur.execute('call mysql.rds_start_replication' )
 		else:
 			pass
+			
 		cur.close()
 
 			
