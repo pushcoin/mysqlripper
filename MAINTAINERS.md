@@ -132,12 +132,22 @@ mysql --user=root -p  --port=3338 --host=127.0.0.1 < /tmp/everything.sql
 ```
 
 ```
+DROP PROCEDURE mysql.rds_stop_replication;
+DROP PROCEDURE mysql.rds_start_replication;
+
 DELIMITER $$
 CREATE PROCEDURE mysql.rds_stop_replication()
 BEGIN
 	STOP SLAVE;
 	SELECT 'Slave has been stopped';
 END $$
+
+CREATE PROCEDURE mysql.rds_start_replication()
+BEGIN
+	START SLAVE;
+	SELECT 'Slave has been started';
+END $$
+
 DELIMITER ;
 ```
 

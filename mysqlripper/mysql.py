@@ -64,7 +64,7 @@ class MySQLRip:
 		elif self._db_type == DBType.slave:
 			cur.execute('START SLAVE' )
 		elif self._db_type == DBType.rds_slave:
-			cur.execute('START SLAVE' )
+			cur.execute('call mysql.rds_start_replication' )
 		else:
 			pass
 		cur.close()
