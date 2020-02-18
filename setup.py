@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
 	name="mysqlripper",
-	version="0.0.1",
+	version="0.0.2",
 	author="Edaqa Mortoray",
 	author_email="edaqa@disemia.com",
 	description="A parallel MySQL database dumping utility",
